@@ -13,88 +13,57 @@
 #include <stdio.h>
 #include "battleship.h"
 
-#define FIELD { \
-	{	Water,	Water,	Water,	Water,	Water,	Water,	Water,  Water,  Water,  Water}, \
-	{	Water,	Water,	Water,	Water,	Water, 	Water, 	Water,  Water,  Water,  Water}, \
-	{	Water,  Water,	Water,	Water,	Water,	Water,	Water,	Water,	Water,	Water}, \
-	{	Water,	Water,	Water,	Water,	Water,	Water,   Water,	Water,	Water,	Water}, \
-	{	Water,  Water,	Water,	Water,	Water,	Water,	Water,	Water,	Water,	Water}, \
-	{	Water,	Water,	Water,	Water,	Water,	Water,	Water,	Water,	Water,	Water}, \
-	{	Water,  Water, Water,	Water,	Water,	Water,	Water,	Water,	Water,	Water}, \
-	{	Water,  Water,	Water,	Water,	Water,	Water,	Water,	Water,	Water,	Water}, \
-	{	Water,	Water,	Water,	Water,	Water,	Water,	Water,	Water,   Water,  Water}, \
-	{	Water,  Water,	Water,	Water,	Water,	Water,	Water,	Water,	Water,	Water}  \
-}
-
-#define GUESS_FIELD{ \
-	{	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown}, \
-	{	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown}, \
-	{	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown}, \
-	{	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown}, \
-  {	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown}, \
-  {	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown}, \
-  {	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown}, \
-  {	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown}, \
-  {	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown}, \
-  {	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown,	Unknown}, \
-}
-
-static CellContent my_field[FIELDSIZE][FIELDSIZE] = FIELD;
-static CellContent opposite_field[FIELDSIZE][FIELDSIZE] = FIELD;
-
-static CellContent my_guesses[FIELDSIZE][FIELDSIZE] = GUESS_FIELD;
+CellContent my_field[FIELDSIZE][FIELDSIZE];
+CellContent opposite_field[FIELDSIZE][FIELDSIZE];
+CellContent my_guesses[FIELDSIZE][FIELDSIZE];
 
 void load_game(){
-FILE* my_file = fopen("battleship.my", "r+");
-FILE* opposite_file = fopen("battleship.op", "r+");
+FILE* my_file = fopen("battleship.my", "r");
+FILE* opposite_file = fopen("battleship.op", "r");
 
 for (int i = 0; i < FIELDSIZE; i++) {
-  fwrite(my_field[i], sizeof(CellContent), FIELDSIZE, my_file);
-  fwrite(opposite_field[i], sizeof(CellContent), FIELDSIZE, opposite_file);
+  for (int j = 0; j < FIELDSIZE; j++) {
+    fread(&my_field[i][j], sizeof(CellContent), 1, my_file);
+    fread(&opposite_field[i][j], sizeof(CellContent), 1, opposite_file);
+    my_guesses[i][j] = Unknown;
+  }
 }
-
 fclose(my_file);
 fclose(opposite_file);
 }
 
-/**
-*** @param row The row where we get the shot.
-*** @param col The col where we get the shot.
-*** @return The value of cell indicated by row and column of the own field (filled
-*** with the values of battleship.my). If row/col point outside the field the
-*** value OutOfRange is returned.
-*/
 CellContent get_shot(int row, int col){
   if (row < 0 || row > 9 || col < 0 || col > 9) {
     return OutOfRange;
   }
-return my_field[col][row];
+  else return my_field[row][col];
 }
 
-/**
-*** Sets the row and column of the my guesses table to the value held in the
-*** opponents field. If this is a Water all surrounding cells are marked as water.
-*** @param row The row where we place the shot
-*** @param col The columnt where we place the shot.
-*** @return True if target field is valid, i.e., inside the field, False otherwise.
-*/
 bool shoot(int row, int col){
-  if ((row< 0 || row > 9) || (col < 0 || col > 9)) {
+  CellContent my_guess = get_my_guess(row, col);
+  if (my_guess == OutOfRange ||row< 0 || row > 9 || col < 0 || col > 9) {
     return false;
   }
+  else if (opposite_field[row][col] == Water || opposite_field[row][col] == Boat ) {
+    my_guesses[row][col] = opposite_field[row][col];
+    if (my_guesses[row][col] == Boat) {
 
-return false;
+      for (int i = row-1; i < row+2; i++) {
+        for (int j = col-1; j < col+2; j++) {
+          my_guess = get_my_guess(i, j);
+          if (my_guess == Unknown) {
+            my_guesses[i][j] = Water;
+          }
+        }
+      }
+    }
+  }
+return true;
 }
 
-/**
-*** @param row The row where we want to get our own guess.
-*** @param col The column where we want to get our own guess.
-*** @return The value of the table with my guesses at row and column. If row/col
-*** is outside the field OutOfRange is returned.
-*/
 CellContent get_my_guess(int row, int col){
   if (row < 0 || row > 9 || col < 0 || col > 9) {
     return OutOfRange;
   }
-return my_guesses[row][col];
+else return my_guesses[row][col];
 }
